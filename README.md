@@ -1,6 +1,6 @@
 # Notes1.0
 
-Notes1.0 is a programme that allows the user to keep a notebook available from the command line.
+Notes1.0 is a programme that allows the user to keep a searchable notebook available from the command line.
 The user can create, search and read their notes as well as delete specific notes or lines. 
 
 
