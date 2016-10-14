@@ -4,21 +4,24 @@
 #!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!
 
 notesscript=${BASH_SOURCE[0]} #Location of the script/code.
-#notesscript="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" #Location of the script/code.
 cat $notesscript > $HOME/.notes1.0-backup-script #Create a back-up script for visualization only.
 
-touch ~/.notes1.0 || exit #Create a Notes file if it doesn't exist yet.
-touch ~/.notes1.0-backup || exit #Create a back-up Notes file if it doesn't exist yet.
+#Create a Notes file if it doesn't exist yet.
+if [ ! -f $HOME/.notes1.0 ] ; then
+	touch $HOME/.notes1.0 #Create a Notes1.0 file.
+	echo "####################################################" >> $HOME/.notes1.0
+        echo "##################### NOTES 1.0 ####################" >> $HOME/.notes1.0
+        echo "####################################################" >> $HOME/.notes1.0
+	touch $HOME/.notes1.0-backup #Create a Notes1.0 file.
+fi
 
 mynotes=$(echo "$HOME/.notes1.0")
-cat $mynotes > $HOME/.notes1.0-backup
-#cat $mynotes > /home/williansilva/willian-ebc-files/bash-files/mynotes-backup
 
 if [ -z "$1" ] ; then #If no parameters given.
 	#Display function description and usage if no parameters given.
-	echo "###################################################"
-	echo "##################### NOTES 1.0 ###################"
-	echo "###################################################"
+	echo "####################################################"
+	echo "##################### NOTES 1.0 ####################"
+	echo "####################################################"
 	echo "The program NOTES 1.0 will keep your notes in the file:"
 	echo "$mynotes"
 	echo ""
@@ -46,8 +49,7 @@ if [ -z "$1" ] ; then #If no parameters given.
 #Read notes.
 elif [ "$1" = "--read" ] || [ "$1" = "-r" ] ; then #If argument --read is given.
 	echo "Reading notes..."
-	firstnote=$(grep -n "^#!!!" $mynotes | cut -d : -f 1 | head -n 1) #Find beginning of first note.
-	tail -n +$firstnote $mynotes | less #Read notes.
+	less $mynotes #Read notes.
 #Create new note.
 elif [ "$1" = "--new" ] || [ "$1" = "-n" ] ; then #If argument --new is given.
 	if [ -z "$2" ] ; then #If no variable is given after --new.
@@ -76,14 +78,14 @@ elif [ "$1" = "--note" ] || [ "$1" = "-i" ] ; then #If argument --note is given.
 	if [ -z "$2" ] ; then #If no variable is given after --note.
 		echo "Please, specify variable after --note."
 	else
-		upper=$(grep -n "" $mynotes | awk "NR<=$2" | tac | grep "@\!\# Date: " | head -n 1 | cut -f1 -d:) #Find beginning of note that includes specified line.
-		endcheck=$(awk "NR>=$upper" $mynotes | grep -c "@\!\# Date:") #Check if this is the last note.
+		upper=$(grep -n "" $mynotes | awk -v inote="$2" 'NR<=inote' | awk '{a[i++]=$0} END {for (j=i-1; j>=0;) print a[j--] }' | grep "@\!\# Date: " | head -n 1 | cut -f1 -d:) #Find beginning of note that includes specified line.
+		endcheck=$(awk -v upper="$upper" 'NR>=upper' $mynotes | grep -c "@\!\# Date:") #Check if this is the last note.
 		lastline=$(grep -c "" $mynotes) #Get number of last line.
 		if [ "$endcheck" = "1" ] ; then #If this is the last note.
-			awk "NR>=$upper && NR<=$lastline" $mynotes
+			awk -v upper="$upper" -v lastline="$lastline" 'NR>=upper && NR<=lastline' $mynotes
 		else
-			lower=$(grep -n "" $mynotes | awk "NR>=$2" | grep "@\!\# Date: " | head -n 1 | cut -f1 -d:) #Find end of note that includes specified line.
-			awk "NR>=$upper && NR<$lower" $mynotes
+			lower=$(grep -n "" $mynotes | awk -v inote="$2" 'NR>=inote' | grep "@\!\# Date: " | head -n 1 | cut -f1 -d:) #Find end of note that includes specified line.
+			awk -v upper="$upper" -v lower="$lower" 'NR>=upper && NR<lower' $mynotes
 		fi
 	fi
 #Delete specific line.
@@ -92,7 +94,7 @@ elif [ "$1" = "--dline" ] || [ "$1" = "-dl" ] ; then #If argument --dline is giv
 		echo "Please, specify variable after --dline."
 	else #If dline variable is given.
 		echo "Deleting line ${2} in notes..."
-		sed -i ''$2'd' $mynotes
+		awk -v line="$2" 'NR==line {next} {print}' $mynotes > $HOME/tempfile && mv $HOME/tempfile $HOME/.notes1.0
 		echo "Line deleted!"
 	fi
 #Delete specific note.
@@ -101,14 +103,14 @@ elif [ "$1" = "--dnote" ] || [ "$1" = "-dn" ] ; then #If argument --dnote is giv
 		echo "Please, specify variable after --dnote."
 	else
 		echo "Deleting note..."
-		upper=$(grep -n "" $mynotes | awk "NR<=$2" | tac | grep "@\!\# Date: " | head -n 1 | cut -f1 -d:) #Find beginning of note that includes specified line.
-		endcheck=$(awk "NR>=$upper" $mynotes | grep -c "@\!\# Date:") #Check if this is the last note.
+		upper=$(grep -n "" $mynotes | awk -v inote="$2" 'NR<=inote' | awk '{a[i++]=$0} END {for (j=i-1; j>=0;) print a[j--] }' | grep "@\!\# Date: " | head -n 1 | cut -f1 -d:) #Find beginning of note that includes specified line.
+		endcheck=$(awk -v upper="$upper" 'NR>=upper' $mynotes | grep -c "@\!\# Date:") #Check if this is the last note.
 		lastline=$(grep -c "" $mynotes) #Get number of last line.
 		if [ "$endcheck" = "1" ] ; then #If this is the last note.
-			sed -i ''$upper','$lastline'd' $mynotes
+			awk -v upper="$upper" -v lower="$lower" 'NR>=upper {next} {print}' $mynotes > $HOME/tempfile && mv $HOME/tempfile $HOME/.notes1.0
 		else
-			lower=$(grep -n "" $mynotes | awk "NR>=$2" | grep "@\!\# Date: " | head -n 1 | cut -f1 -d:) #Find end of note that includes specified line.
-			sed -i ''$upper','$lower'd' $mynotes
+			lower=$(grep -n "" $mynotes | awk -v inote="$2" 'NR>=inote' | grep "@\!\# Date: " | head -n 1 | cut -f1 -d:) #Find end of note that includes specified line.
+			awk -v upper="$upper" -v lower="$lower" 'NR>=upper && NR<lower {next} {print}' $mynotes > $HOME/tempfile && mv $HOME/tempfile $HOME/.notes1.0
 		fi
 	fi
 	echo "Note deleted!"
@@ -117,10 +119,7 @@ elif [ "$1" = "--total" ] || [ "$1" = "-t" ] ; then #If argument --total is give
 	grep "^@\!\# Date:" -c $mynotes #Total number of notes.
 #Read script of notes.
 elif [ "$1" = "--code" ] ; then #If argument --code is given.
-	cat $HOME/.notes1.0-backup-script
-	#cat $notesscript/notes.sh
-	#lastcode=$(grep -n "^\#\!\#\!\#\!\#\!" $mynotes | tail -n 1 | cut -f1 -d:) #Get last line of code.
-	#awk "NR>=1 && NR<=$lastcode" $mynotes
+	less $HOME/.notes1.0-backup-script
 elif [ "$1" = "--author" ] ; then #If argument --author is given.
 	echo "Willian Silva"
 	echo "Uppsala University"
@@ -135,6 +134,8 @@ else
 	echo "${*:1}" >> $mynotes
 	echo "Note appended!"
 fi
+
+cat $mynotes > $HOME/.notes1.0-backup
 
 #Willian Silva
 #Uppsala University
